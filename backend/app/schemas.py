@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, UUID4
 from datetime import datetime
 from typing import Optional
+import uuid
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -15,6 +16,8 @@ class User(UserBase):
     class Config:
         from_attributes = True
         orm_mode = True
+
+
 
 class DropBase(BaseModel):
     title: str
@@ -39,3 +42,34 @@ class Drop(DropBase):
     class Config:
         from_attributes = True
         orm_mode = True
+
+
+
+class WaitlistBase(BaseModel):
+    user_id: int
+    drop_id: int
+
+class Waitlist(WaitlistBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+
+class ClaimBase(BaseModel):
+    user_id: int
+    drop_id: int
+
+class Claim(ClaimBase):
+    id: int
+    code: str #unique code
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+#generic message schema
+class Message(BaseModel):
+    detail: str
