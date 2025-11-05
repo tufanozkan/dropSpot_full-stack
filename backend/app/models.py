@@ -11,8 +11,8 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False)
 
-    waitlist_entries = relationship("Waitlist", back_populates="user")
-    claims = relationship("Claim", back_populates="user")
+    waitlist_entries = relationship("Waitlist", back_populates="user", cascade="all, delete-orphan")
+    claims = relationship("Claim", back_populates="user", cascade="all, delete-orphan")
 
 class Drop(Base):
     __tablename__ = "drops"
@@ -24,8 +24,8 @@ class Drop(Base):
     claim_window_end = Column(DateTime(timezone=True), nullable=False)
     stock = Column(Integer, nullable=False)
 
-    waitlist_users = relationship("Waitlist", back_populates="drop")
-    claims = relationship("Claim", back_populates="drop")
+    waitlist_users = relationship("Waitlist", back_populates="drop", cascade="all, delete-orphan")
+    claims = relationship("Claim", back_populates="drop", cascade="all, delete-orphan")
 
 class Waitlist(Base):
     __tablename__ = "waitlist"

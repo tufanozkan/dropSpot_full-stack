@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from .database import engine
 from . import models
-from .routers import auth, admin
+from .routers import auth, admin, drops
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -13,6 +13,7 @@ app = FastAPI(
 
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(drops.router, prefix="/drops", tags=["Drops"])
 
 @app.get("/", tags=["Root"])
 def read_root():
