@@ -10,7 +10,7 @@ def get_user_by_email(db: Session, email: str):
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = security.get_password_hash(user.password)
     db_user = models.User(email=user.email, password_hash=hashed_password)
-    if user.email == "admin@example.com":
+    if user.email == "admin@test.com":
         db_user.is_admin = True
     db.add(db_user)
     db.commit()
