@@ -1,237 +1,264 @@
-DropSpot - Full Stack Değerlendirme Projesi
-DropSpot, özel ürünlerin veya etkinliklerin sınırlı stokla yayımlandığı bir "drop" platformudur. Kullanıcılar bu platformda "bekleme listelerine" katılabilir ve "hak talebi penceresi" (claim window) açıldığında sırayla hak kazanırlar.
+# DropSpot — Full Stack Değerlendirme Projesi
 
-Bu proje, bir full stack mühendisinin planlama, mimari, kod kalitesi ve test disiplinlerini ölçmek için tasarlanmış uçtan uca bir değerlendirme görevidir.
+DropSpot, özel ürünlerin veya etkinliklerin sınırlı stokla yayımlandığı bir “drop” platformudur. Kullanıcılar bekleme listelerine (waitlist) katılır ve “claim window” açıldığında sırayla hak kazanırlar.
 
-1. Proje Özeti ve Mimari Açıklama
-   Proje, modern ve yüksek performanslı bir teknoloji yığını üzerine kurulmuştur. Mimari, frontend ve backend'in tamamen ayrık (decoupled) çalışmasına olanak tanır.
+Bu repo, bir full stack mühendisinin planlama, mimari, kod kalitesi ve test disiplinlerini ölçmek için hazırlanmış uçtan uca bir değerlendirme projesidir.
 
-Backend Mimarisi (FastAPI)
+## İçindekiler
 
-Framework: Python 3 (Async) tabanlı FastAPI.
+- Proje Özeti ve Mimari
+  - Backend Mimarisi (FastAPI)
+  - Frontend Mimarisi (Next.js)
+- Veri Modeli ve Endpoint Listesi
+  - Veri Modeli (models.py)
+  - API Endpoint Listesi
+- CRUD Modülü Açıklaması
+- Idempotency ve Transaction Yapısı
+- Kurulum (Backend & Frontend)
+  - Backend Kurulumu
+  - Frontend Kurulumu
+  - İlk Kullanım
+- Sayfalar
+- Teknik Tercihler ve Kişisel Katkılar
+- Seed Üretim Yöntemi ve Kullanımı
+- Bonus: AI Entegrasyonu
 
-Veritabanı & ORM: SQLite (geliştirme kolaylığı için) ve SQLAlchemy (ORM).
+---
 
-Kimlik Doğrulama: JWT (Access Token) tabanlı, OAuth2PasswordBearer ve passlib (bcrypt) ile.
+## Proje Özeti ve Mimari
 
-Test: Pytest (1 Unit ve 2 Entegrasyon/Edge-case testi).
+Modern ve yüksek performanslı bir teknoloji yığını üzerine inşa edilmiştir. Mimari, frontend ve backend’in tamamen ayrık (decoupled) çalışmasına olanak tanır.
 
-Neden FastAPI? Asenkron yapısı, otomatik Swagger/OpenAPI dokümantasyonu ve Pydantic ile gelen veri doğrulama özellikleri sayesinde hızlı ve hatasız bir API geliştirme süreci sunar.
+### Backend Mimarisi (FastAPI)
 
-Frontend Mimarisi (Next.js)
+- Framework: Python 3 (Async) + FastAPI
+- Veritabanı & ORM: SQLite (geliştirme kolaylığı) + SQLAlchemy (ORM)
+- Kimlik Doğrulama: JWT Access Token, OAuth2PasswordBearer, passlib (bcrypt)
+- Test: Pytest (1 Unit + 2 Entegrasyon/Edge-case)
 
-Framework: Next.js 14+ (App Router) ve React (TypeScript ile).
+Neden FastAPI?
 
-UI Kütüphanesi: Chakra UI (Hızlı, erişilebilir ve modüler bileşenler için).
+- Asenkron altyapı, otomatik Swagger/OpenAPI dokümantasyonu, Pydantic ile güçlü veri doğrulama ve yüksek hız.
 
-Global State: Zustand (persist middleware'i ile) (Giriş/Çıkış durumunu ve token'ı yönetmek için).
+### Frontend Mimarisi (Next.js)
 
-API İstemcisi: Axios (Token'ı otomatik ekleyen bir interceptor ile yapılandırıldı).
+- Framework: Next.js 14+ (App Router) + React (TypeScript)
+- UI: Chakra UI (erişilebilir, hızlı, modüler)
+- Global State: Zustand + persist middleware (login/logout ve token yönetimi)
+- API İstemcisi: Axios (token’ı otomatik ekleyen interceptor)
+- Test: Cypress (Login → Drop Oluşturma → Claim akışını kapsayan E2E smoke testi)
 
-Test: Cypress (Login → Drop Oluşturma → Claim Akışını kapsayan E2E Smoke Testi).
+Neden Next.js?
 
-Neden Next.js? Sunucu Taraflı Render (SSR), dosya tabanlı rota yönetimi (App Router) ve modern React özellikleri için en iyi seçenektir.
+- SSR, App Router ile dosya tabanlı rota, modern React özellikleri ve güçlü DX.
 
-2. Veri Modeli ve Endpoint Listesi
-   Veri Modeli (models.py)
+---
 
-Proje, 4 ana SQL tablosu üzerine kuruludur:
+## Veri Modeli ve Endpoint Listesi
 
-User: Kullanıcıları (e-posta, parola hash, admin durumu) tutar.
+### Veri Modeli (models.py)
 
-Drop: Drop etkinliklerini (başlık, stok, claim penceresi) tutar.
+Sistem 4 ana SQL tablosu üzerine kuruludur:
 
-Waitlist: Hangi User'ın hangi Drop'a katıldığını (Many-to-Many ilişki) tutar. (user_id, drop_id) üzerinde UniqueConstraint bulunur.
+- User: E-posta, parola hash, admin durumu
+- Drop: Başlık, stok, claim penceresi
+- Waitlist: User ↔ Drop (M:N). (user_id, drop_id) üzerinde UniqueConstraint
+- Claim: User ↔ Drop (M:N). (user_id, drop_id) üzerinde UniqueConstraint
 
-Claim: Hangi User'ın hangi Drop için hak talebinde bulunduğunu (Many-to-Many ilişki) tutar. (user_id, drop_id) üzerinde UniqueConstraint bulunur.
+Not: User ve Drop ilişkileri cascade="all, delete-orphan" ile yapılandırılmıştır. Bir Drop silindiğinde ona bağlı Waitlist ve Claim kayıtları da otomatik silinir (veri bütünlüğü).
 
-User ve Drop tabloları, cascade="all, delete-orphan" ile yapılandırılmıştır; bu sayede bir Drop silindiğinde, ona bağlı tüm Waitlist ve Claim kayıtları da otomatik olarak silinir (Veri Bütünlüğü).
+### API Endpoint Listesi
 
-API Endpoint Listesi
-
-Tüm endpoint'ler http://127.0.0.1:8000 adresinden sunulur.
+Tüm endpoint’ler: http://127.0.0.1:8000
 
 Auth (/auth)
 
-POST /signup: Yeni kullanıcı kaydı oluşturur.
+- POST `/signup`: Yeni kullanıcı kaydı
+- POST `/login`: JWT Access Token üretir (body: `application/x-www-form-urlencoded`)
 
-POST /login: JWT (Access Token) oluşturur (application/x-www-form-urlencoded formatında veri bekler).
+Admin (/admin — korumalı)
 
-Admin (/admin - Korumalı)
+- Tüm istekler `get_current_admin_user` ile doğrulanır; yalnızca `user.is_admin == True` kabul edilir.
+- GET `/admin/drops`: Tüm drop’ları listeler
+- POST `/admin/drops`: Yeni drop oluşturur
+- PUT `/admin/drops/{id}`: Drop günceller
+- DELETE `/admin/drops/{id}`: Drop siler
 
-Bu endpoint'ler, JWT token'ı get_current_admin_user dependency'si ile doğrular ve sadece user.is_admin == True ise izin verir.
+Drops (/drops — genel/korumalı)
 
-GET /drops: Tüm drop'ları listeler.
+- GET `/drops/`: Herkese açık, aktif tüm drop’lar
+- POST `/drops/{id}/join` (korumalı): Bekleme listesine ekler (idempotent)
+- POST `/drops/{id}/leave` (korumalı): Bekleme listesinden çıkarır (idempotent)
+- POST `/drops/{id}/claim` (korumalı): Hak talebi oluşturur (atomik & idempotent)
 
-POST /drops: Yeni bir drop oluşturur.
+---
 
-PUT /drops/{id}: Belirli bir drop'u günceller.
+## CRUD Modülü Açıklaması
 
-DELETE /drops/{id}: Belirli bir drop'u siler.
+- Kimlik Doğrulama: Tüm `/admin` endpoint’leri `Authorization: Bearer <token>` bekler. Token çözümlenir, kullanıcı DB’den bulunur.
+- Yetkilendirme: `get_current_admin_user`, token’daki kullanıcının `is_admin` değerini doğrular. Aksi durumda 403 Forbidden.
+- Arayüz: Frontend’de `/admin` rotasında tam işlevli bir CRUD ekranı bulunur. Yeni drop oluşturma ve düzenleme tek bir akıllı modal form ile; silme ise onaylı (AlertDialog) ilerler.
 
-Drops (/drops - Genel/Korumalı)
+---
 
-GET /: Herkese açık, aktif tüm drop'ları listeler.
-
-POST /{id}/join (Korumalı): Kullanıcıyı bekleme listesine ekler (Idempotent).
-
-POST /{id}/leave (Korumalı): Kullanıcıyı bekleme listesinden çıkarır (Idempotent).
-
-POST /{id}/claim (Korumalı): Kullanıcı için hak talebi oluşturur (Atomik & Idempotent).
-
-3. CRUD Modülü Açıklaması
-   Proje, Admin rolüne sahip kullanıcılar için tam bir CRUD (Create, Read, Update, Delete) modülü sunar.
-
-Kimlik Doğrulama: Tüm /admin endpoint'leri, Authorization: Bearer <token> başlığını bekler. Token çözümlenir ve kullanıcı veritabanından bulunur.
-
-Yetkilendirme (Bonus): get_current_admin_user dependency'si, token'dan gelen kullanıcının is_admin flag'inin True olup olmadığını kontrol eder. Eğer değilse, 403 Forbidden hatası döndürür.
-
-Arayüz (UI): Frontend'deki /admin rotası, bu CRUD endpoint'lerini kullanan tam fonksiyonel bir arayüz sağlar. Yeni drop oluşturma ve mevcut drop'ları düzenleme işlemleri için tek bir akıllı Modal (açılır pencere) formu kullanılır. Silme işlemi, yanlışlıkla tıklamaları önlemek için ek bir AlertDialog (onay kutusu) ile korunur.
-
-4. Idempotency Yaklaşımı ve Transaction Yapısı
-   Değerlendirmenin "Veri Bütünlüğü" (25 Puan) kriteri için bu iki konuya özel önem verilmiştir.
+## Idempotency ve Transaction Yapısı
 
 Idempotency (Tekrarlanabilirlik)
 
-Kullanıcının bir butona art arda basmasının mükerrer kayıt oluşturması engellenmiştir.
+- POST `/drops/{id}/join`: Kayıt öncesi `Waitlist`’te arama yapılır. Varsa “ALREADY_IN_WAITLIST” döner ve kullanıcı bilgilendirilir.
+- POST `/drops/{id}/leave`: Benzer şekilde yoksa “NOT_IN_WAITLIST” ile idempotent davranır.
+- POST `/drops/{id}/claim`: DB seviyesinde `UniqueConstraint(user_id, drop_id)` ile garanti edilir. İkinci denemede `IntegrityError` → 409 Conflict (ALREADY_CLAIMED).
 
-POST /drops/{id}/join: Backend (crud.py), bir kullanıcıyı listeye eklemeden önce existing_entry = db.query(Waitlist)... sorgusuyla onu arar. Eğer kayıt varsa, yeni kayıt oluşturmak yerine "ALREADY_IN_WAITLIST" string'ini döndürür. Router (routers/drops.py), bu string'i yakalar ve frontend'e "Zaten bekleme listesindesiniz." JSON mesajını gönderir.
+Transaction ve Race Condition Kontrolü
 
-POST /drops/{id}/leave: Aynı mantık NOT_IN_WAITLIST kontrolü ile uygulanır.
+- Atomiklik: Claim akışı iki adımlıdır: (1) stok–1, (2) claim insert. Insert başarısız olursa `db.rollback()` ile stok güncellemesi de geri alınır (ya hep ya hiç).
+- Eşzamanlılık (SQLite): SQLite yazma işlemlerini serileştirir (dosya kilidi). İki eşzamanlı claim, stoğun −1’e düşmesine engel olur.
+- Eşzamanlılık (PostgreSQL): `with_for_update()` (pessimistic locking) ile satır kilidi alınarak doğru stok yönetimi sağlanır.
 
-POST /drops/{id}/claim: Idempotency, veritabanı seviyesinde UniqueConstraint(user_id, drop_id) ile sağlanır. İkinci bir claim denemesi IntegrityError fırlatır, try-except bloğu bunu yakalar ve 409 Conflict (ALREADY_CLAIMED) hatası döndürür.
+---
 
-Transaction ve "Race Condition" Kontrolü
+## Kurulum (Backend & Frontend)
 
-Projenin en kritik işlemi, iki kullanıcının stokta kalan son 1 ürünü aynı anda (race condition) almaya çalışmasıdır.
+Projeyi çalıştırmak için backend ve frontend sunucularını aynı anda çalıştırın.
 
-Atomiklik: POST /drops/{id}/claim işlemi, crud.py içinde bir try-except bloğu ile yönetilir. Bu işlem iki adımlıdır: 1) Stoğu 1 azalt (UPDATE drops...), 2) Hak talebini kaydet (INSERT INTO claims...). Eğer INSERT işlemi (örn: UniqueConstraint hatası) başarısız olursa, db.rollback() çağrılır ve UPDATE (stok düşürme) işlemi de geri alınır. Bu, verinin atomik (ya hep ya hiç) olmasını sağlar.
+### Backend Kurulumu
 
-Eşzamanlılık (SQLite): Bu projede kullanılan SQLite, varsayılan olarak yazma işlemlerini serileştirir (tüm veritabanı dosyasını kilitler). Bu, iki claim isteği milisaniyeler içinde gelse bile, birinin diğerini beklemesini ve stoğun -1'e düşmesini doğal olarak engeller.
+1. Sanal ortamı oluşturun ve etkinleştirin:
 
-Eşzamanlılık (PostgreSQL Yaklaşımı): Eğer bu proje PostgreSQL üzerinde çalışsaydı, crud.py içindeki sorgu db.query(models.Drop)...with_for_update().first() şeklinde (Pessimistic Locking) yazılacaktı. Bu, SELECT işlemi sırasında o Drop satırını UPDATE için kilitleyerek, başka hiçbir transaction'ın o satırı okuyup stoğu hatalı hesaplamamasını garantilerdi.
-
-5. Kurulum Adımları (Backend ve Frontend)
-   Projeyi çalıştırmak için backend ve frontend sunucularının aynı anda çalışması gerekir.
-
-Backend Kurulumu
-
-Proje klonlandıktan sonra, backend dizinine gidin ve sanal ortamı kurun:
-
-Bash
+```bash
 cd backend
 python -m venv venv
-source venv/bin/activate # (Windows için: .\venv\Scripts\activate)
-requirements.txt dosyasını oluşturun (eğer yoksa) ve kütüphaneleri kurun:
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
+```
 
-Bash
-pip freeze > requirements.txt
+2. Bağımlılıkları kurun:
+
+- requirements.txt varsa:
+
+```bash
 pip install -r requirements.txt
-.env dosyasını oluşturun. backend klasörü içine .env adında bir dosya açın ve içine şunu yapıştırın:
+```
 
-Kod snippet'i
+- requirements.txt yoksa (hızlı başlangıç):
+
+```bash
+pip install fastapi "uvicorn[standard]" sqlalchemy pydantic "python-jose[cryptography]" passlib[bcrypt] bcrypt python-dotenv pytest httpx
+pip freeze > requirements.txt
+```
+
+3. `.env` dosyasını oluşturun (`backend` klasörüne):
+
+```env
 SECRET_KEY=c0k-g1zl1-b1r-s1fr3-1l3-d3g1st1r
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-Sunucuyu başlatın (otomatik yeniden yükleme ile):
+```
 
-Bash
+4. Geliştirme sunucusunu başlatın:
+
+```bash
 uvicorn app.main:app --reload
-Sunucu http://127.0.0.1:8000 adresinde çalışacaktır.
+```
 
-Frontend Kurulumu
+Sunucu: http://127.0.0.1:8000
 
-Ayrı bir terminalde frontend dizinine gidin:
+### Frontend Kurulumu
 
-Bash
+1. Bağımlılıkları kurun ve dev sunucuyu başlatın:
+
+```bash
 cd frontend
-Bağımlılıkları kurun:
-
-Bash
 npm install
-Geliştirme sunucusunu başlatın:
-
-Bash
 npm run dev
-Sunucu http://localhost:3000 adresinde çalışacaktır.
+```
 
-İlk Kullanım (Zorunlu)
+Sunucu: http://localhost:3000
 
-Veritabanı (dropspot.db) boştur. Sistemi test etmek için:
+### İlk Kullanım (Zorunlu)
 
-http://localhost:3000/signup adresine gidin.
+Veritabanı (dropspot.db) başlangıçta boştur. Test için:
 
-admin@test.com (şifre: admin123) kullanıcısını oluşturun (Bu, Admin yetkisine sahiptir).
+1. http://localhost:3000/signup adresine gidin.
+2. `admin@test.com` (şifre: `admin123`) — admin yetkili kullanıcıyı oluşturun.
+3. `user1@test.com` (şifre: `user123`) — normal test kullanıcısı oluşturun.
+4. `admin@test.com` ile giriş yapın, `/admin` sayfasından yeni drop’lar oluşturun.
 
-user1@test.com (şifre: user123) adında normal bir test kullanıcısı oluşturun.
+Opsiyonel testler:
 
-admin@test.com ile giriş yaparak /admin sayfasından yeni drop'lar oluşturabilirsiniz.
+- Backend (pytest):
 
-6. Pages
+```bash
+cd backend
+pytest -q
+```
+
+- Frontend (Cypress):
+
+```bash
+cd frontend
+npm run cypress:open
+```
+
+---
+
+## Sayfalar
 
 1. Admin Paneli (CRUD Arayüzü)
 
-Açıklama: Admin paneli, mevcut tüm drop'ları listeler. "+ Yeni Drop Ekle" butonu, yeni drop oluşturmak için (veya "Düzenle" butonu, güncellemek için) bir modal form açar. "Sil" butonu, ek bir onay kutusu ile işlemi doğrular.
+- Mevcut tüm drop’ları listeler. “+ Yeni Drop Ekle” ile oluşturma; “Düzenle” ile güncelleme; “Sil” işlemi onay modali ile korunur.
 
 2. Drop Listesi (Kullanıcı Arayüzü)
 
-Açıklama: /drops sayfası, tüm drop'ları kartlar halinde listeler. Her kartın sağ üst köşesinde, drop'un durumunu (AÇIK, KAPANDI, YAKINDA) gösteren bir etiket (Tag) bulunur.
+- `/drops` sayfası, tüm drop’ları kartlar halinde listeler. Kartlarda durum etiketi (AÇIK, KAPANDI, YAKINDA) görünür.
 
-3. Drop Detay ve Claim Sayfası
+3. Drop Detay ve Claim
 
-Açıklama: Bir drop'a tıklandığında açılan detay sayfası. Claim penceresi "AÇIK" ise "HAK TALEP ET" butonu, "YAKINDA" ise "Bekleme Listesine Katıl" / "Listeden Ayrıl" butonları görünür.
+- Claim penceresi AÇIK ise “HAK TALEP ET”; YAKINDA ise “Bekleme Listesine Katıl / Listeden Ayrıl” eylemleri görünür.
 
-7. Teknik Tercihler ve Kişisel Katkılar
-   Teknik Tercihler:
+---
 
-Chakra UI: Prototipleme hızı için Material UI veya Chakra UI arasında kalındı. Chakra'nın Box, Stack, Flex gibi stil-prop'ları (style-props) sayesinde styled-components ihtiyacını ortadan kaldırması ve hızı nedeniyle tercih edildi.
+## Teknik Tercihler ve Kişisel Katkılar
 
-Zustand: Redux veya Context API yerine Zustand tercih edildi. Sebebi, Context gibi "prop-drilling" sorununu çözmesi ancak Redux gibi karmaşık "boilerplate" (hazırlık kodu) gerektirmemesidir. persist middleware'i ile localStorage entegrasyonu çok kolay olmuştur.
+Teknik Tercihler
 
-Cypress (E2E): React Testing Library (RTL) yerine E2E testi tercih edildi. Çünkü projenin asıl riski frontend ve backend'in birlikte çalışmasıdır. Yazılan E2E testi (Login -> Create Drop -> Login as User -> Claim Drop), tüm kritik akışı tek seferde doğrular.
+- Chakra UI: Box/Stack/Flex gibi stil prop’larıyla hızlı prototipleme ve erişilebilir bileşenler.
+- Zustand: Context’in prop-drilling sorununu çözmesi, Redux kadar “boilerplate” gerektirmemesi nedeniyle tercih edildi. `persist` ile localStorage entegrasyonu kolay.
+- Cypress (E2E): Projenin ana riski frontend–backend entegrasyonu olduğundan, kritik akışı tek seferde doğrulayan E2E testi benimsendi (Login → Create Drop → Claim).
 
-Kişisel Katkılar (Kapsam Dışı İyileştirmeler):
+Kişisel Katkılar (Kapsam Dışı İyileştirmeler)
 
-Global Navbar: Tüm sayfaları saran, Zustand state'ine bağlı (user bilgisi) olarak dinamik (Login/Logout) değişen bir Navbar.tsx bileşeni eklendi.
+- Global Navbar: Zustand state’ine bağlı dinamik (Login/Logout) davranış.
+- Frontend Auth Guard: `/admin` rotası `useAuthStore` ile korunur; admin değilse `/`’a yönlendirilir.
+- Hydration Problemi Çözümü: Navbar’da `isClient` ile client-only render garantisi.
+- Gelişmiş Admin Formu: Create/Update için tek modal bileşeni (`editingDrop` state yönetimi).
+- Zaman Dilimi Düzeltmeleri: Backend’de `replace(tzinfo=...)`, frontend’de `toLocalISOString` ve min tarih kontrolleri.
 
-Frontend Auth Guard: /admin rotası, useEffect içinde useAuthStore'u kontrol eden bir mekanizma ile korundu. Admin olmayan kullanıcılar bu adresi manuel yazsa bile ana sayfaya (/) yönlendirilir.
+---
 
-Hydration Hatası Çözümü: Zustand ve Next.js SSR'ın localStorage'da çakışmasını önlemek için Navbar'da [isClient, setIsClient] state'i kullanılarak "client-side-only" render garantilendi.
+## Seed Üretim Yöntemi ve Kullanımı
 
-Gelişmiş Admin Formu: Admin panelindeki modal, hem "Create" hem de "Update" işlemleri için tek bir bileşen olarak (React state'i ile editingDrop) yönetildi.
+Bu projede waitlist sıralaması için benzersiz bir seed (tohum) değeri hesaplanmıştır (SHA256):
 
-Zaman Dilimi Düzeltmeleri: Hem backend'de (crud.py içinde replace(tzinfo=...)) hem de frontend'de (admin/page.tsx içinde toLocalISOString ve min tarih kontrolleri) zaman dilimi (timezone) kaynaklı hataları proaktif olarak çözen kodlar eklendi.
+Girdiler
 
-8. Seed Üretim Yöntemi ve Kullanımı
-   Proje gereksinimleri, sıralama mekanizması için benzersiz bir seed (tohum) değeri üretilmesini istemiştir.
+1. GitHub Remote URL: `https://github.com/tufanozkan/dropSpot_full-stack.git`
+2. İlk Commit (Epoch): `1762348733`
+3. Proje Başlangıç Zamanı: `202511051200`
 
-Proje Seed Değeri
+Hesaplanan Seed: `a1369a5275d8`
 
-Bu projenin benzersiz seed değeri, aşağıdaki komutlar ve girdiler kullanılarak SHA256 ile hesaplanmıştır:
+Katsayılar (türetilmiş):
 
-1. GitHub Remote URL: "https://github.com/tufanozkan/dropSpot_full-stack.git"
+- A = 8
+- B = 18
+- C = 4
 
-2. İlk Commit (Epoch): "1762348733"
+Kullanım (Hipotez)
 
-3. Proje Başlangıç Zamanı: "202511051200"
+- Bu katsayılar, waitlist öncelik puanını belirleyen bir formülde kullanılabilir; klasik FIFO’ya göre daha adil veya rasgele bir dağılım elde edilebilir.
 
-Hesaplanan Proje Seed'i: a1369a5275d8
+---
 
-Seed Kullanım Senaryosu
+## Bonus: AI Entegrasyonu
 
-Bu seed değeri, Waitlist (Bekleme Listesi) sıralaması için gereken öncelik puanı katsayılarını türetmek için kullanılmıştır.
-
-Türetilen Katsayılar:
-
-A = 8
-
-B = 18
-
-C = 4
-
-Kullanım Formülü (Hipotez): Bu katsayılar, bir kullanıcının Waitlist'teki önceliğini belirleyen bir formülde kullanılabilir. Bu, FIFO (İlk Giren İlk Çıkar) modeline göre daha adil veya rastgele bir dağılım sağlayabilir.
-
-9. Bonus: AI Entegrasyonu
-   Zaman kısıtlamaları nedeniyle bu bonus adım (Admin panelinde AI ile açıklama üretme) uygulanmamıştır.
-
-Bir sonraki adım olarak, Admin Panel'deki "Yeni Drop Ekle" modal'ına bir "Açıklama Üret" butonu eklenmesi planlanmaktadır. Bu buton, OpenAI (gpt-3.5-turbo) API'sine drop'un title'ını göndererek, description alanı için otomatik olarak pazarlama odaklı bir metin üretecektir.
+Zaman kısıtları nedeniyle uygulanmadı. Bir sonraki adım olarak `/admin` modal’ına “Açıklama Üret” butonu eklenmesi planlanıyor. Bu buton, OpenAI (gpt-3.5-turbo) ile başlıktan pazarlama odaklı bir açıklama üretecek.
