@@ -53,6 +53,10 @@ export default function LoginPage() {
         isClosable: true,
     })
 
+    setTimeout(() => {
+        router.push(user.isAdmin ? '/admin' : '/')
+      }, 50)
+
     router.push(user.isAdmin ? '/admin' : '/')
     
     } catch (err: unknown) {

@@ -27,15 +27,9 @@ export default function Navbar() {
   // Bu yüzden, sayfa yüklendikten (mount) sonra 'user'ı okumalıyız.
   const [isClient, setIsClient] = useState(false)
   useEffect(() => {
-    // Defer state updates to avoid calling setState synchronously within the effect
-    const id = setTimeout(() => {
-      setIsClient(true)
-      useAuthStore.persist.rehydrate() // State'i localStorage'dan yeniden yükle
-    }, 0)
-
-    return () => clearTimeout(id)
+    const t = setTimeout(() => setIsClient(true), 0)
+    return () => clearTimeout(t)
   }, [])
-  // -------------------------------
 
   const handleLogout = () => {
     logout()
