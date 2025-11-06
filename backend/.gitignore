@@ -6,6 +6,9 @@ venv/
 __pycache__/
 *.pyc
 
+# Test Kalıntıları
+test.db
+
 # Veritabanı Dosyaları
 *.db
 *.sqlite
@@ -13,6 +16,7 @@ __pycache__/
 
 # Gizli Dosyalar
 .env
+.env.*
 
 # Test Kalıntıları
 .pytest_cache/
