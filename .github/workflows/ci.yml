@@ -1,0 +1,65 @@
+# .github/workflows/ci.yml
+
+name: DropSpot CI Pipeline
+
+# Bu pipeline ne zaman çalışsın?
+on:
+  # 1. 'main' branch'ine her 'push' yapıldığında
+  push:
+    branches: [ "main" ]
+  # 2. 'main' branch'ine yönelik her 'Pull Request' açıldığında
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    # Testlerin çalışacağı sanal makine (Ubuntu'nun son sürümü)
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Adım: Proje kodunu sanal makineye indir (checkout)
+      - name: Kodu Çek (Checkout)
+        uses: actions/checkout@v4
+
+      # --- BACKEND BÖLÜMÜ ---
+      
+      - name: Python 3.11 Kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' 
+
+      - name: Backend Bağımlılıklarını Kur
+        working-directory: ./backend # Komutları 'backend' klasöründe çalıştır
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          # requirements.txt'de eksik olabilecek test kütüphanelerini garantile
+          pip install pytest httpx fastapi-cors "bcrypt==4.1.3" python-dotenv
+
+      - name: Backend Testlerini Çalıştır (pytest)
+        working-directory: ./backend
+        run: |
+          source venv/bin/activate
+          pytest
+
+      # --- FRONTEND BÖLÜMÜ ---
+      
+      - name: Node.js 20.x Kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # node_modules klasörünü cache'le
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend Bağımlılıklarını Kur
+        working-directory: ./frontend # Komutları 'frontend' klasöründe çalıştır
+        run: npm install
+
+      - name: Frontend Lint Kontrolü (Kod Stili)
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Frontend Build Kontrolü (Compile)
+        working-directory: ./frontend
+        run: npm run build
