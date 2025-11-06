@@ -67,7 +67,7 @@ def join_waitlist(db: Session, user_id: int, drop_id: int):
     ).first()
     
     if existing_entry:
-        return existing_entry
+        return "ALREADY_IN_WAITLIST"
 
     db_waitlist_entry = models.Waitlist(user_id=user_id, drop_id=drop_id)
     db.add(db_waitlist_entry)
