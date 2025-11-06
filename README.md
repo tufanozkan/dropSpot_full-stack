@@ -1,3 +1,5 @@
+Başlangıç Zamanı: 05.11.2025 12.00
+
 # DropSpot — Full Stack Değerlendirme Projesi
 
 DropSpot, özel ürünlerin veya etkinliklerin sınırlı stokla yayımlandığı bir “drop” platformudur. Kullanıcılar bekleme listelerine (waitlist) katılır ve “claim window” açıldığında sırayla hak kazanırlar.
