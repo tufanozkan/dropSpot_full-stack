@@ -30,8 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Loglar
+*.log
+npm-debug.log*
+
+# Gizli ortam değişkenleri
+.env.local
+.env*.production
 
 # vercel
 .vercel

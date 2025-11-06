@@ -1,0 +1,19 @@
+# Python Sanal Ortamı
+venv/
+.venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+
+# Veritabanı Dosyaları
+*.db
+*.sqlite
+*.sqlite3
+
+# Gizli Dosyalar
+.env
+
+# Test Kalıntıları
+.pytest_cache/
+.coverage
