@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from .. import crud, schemas, models, database
-from ..routers.auth import get_current_user #user sec
+from ..routers.auth import get_current_user
 
 router = APIRouter()
 
@@ -15,7 +15,6 @@ def read_active_drops(skip: int = 0, limit: int = 100, db: Session = Depends(dat
     """
     GET /drops
     Tüm aktif (veya listelenebilir) drop'ları getirir.
-    (Admin'in GET /admin/drops'undan farklıdır, bu herkese açıktır)
     """
     drops = crud.get_drops(db, skip=skip, limit=limit)
     return drops
@@ -28,7 +27,6 @@ def join_drop_waitlist(
     current_user: models.User = Depends(get_current_user)
 ):
     """
-    POST /drops/{drop_id}/join
     Giriş yapmış kullanıcıyı bir drop'un bekleme listesine ekler.
     Idempotent'tir (birden fazla kez denense bile sonuç değişmez).
     """
@@ -37,7 +35,9 @@ def join_drop_waitlist(
     if result == "DROP_NOT_FOUND":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Drop bulunamadı")
     
-    #waitlist
+    if result == "ALREADY_IN_WAITLIST":
+        return {"detail": "Zaten bekleme listesindesiniz."}
+
     return {"detail": "Başarıyla bekleme listesine eklendiniz."}
 
 
@@ -48,7 +48,6 @@ def leave_drop_waitlist(
     current_user: models.User = Depends(get_current_user)
 ):
     """
-    POST /drops/{drop_id}/leave
     Giriş yapmış kullanıcıyı bekleme listesinden kaldırır.
     Idempotent'tir.
     """
@@ -56,7 +55,7 @@ def leave_drop_waitlist(
     
     if result == "NOT_IN_WAITLIST":
         return {"detail": "Zaten bekleme listesinde değilsiniz."}
-        
+
     return {"detail": "Başarıyla bekleme listesinden ayrıldınız."}
 
 
@@ -67,7 +66,6 @@ def claim_drop(
     current_user: models.User = Depends(get_current_user)
 ):
     """
-    POST /drops/{drop_id}/claim
     Giriş yapmış kullanıcı için bir hak talebi oluşturur.
     Tüm stok, zaman ve benzersizlik kontrolleri burada yapılır.
     """
@@ -84,5 +82,4 @@ def claim_drop(
     if result == "INTERNAL_ERROR":
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="İşlem sırasında bir hata oluştu")
         
-    #success
     return result
